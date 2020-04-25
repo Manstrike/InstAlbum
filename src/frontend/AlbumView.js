@@ -16,6 +16,10 @@ class AlbumView {
     }
 
     async _onImageDeleted(imageId, imagesLeft) {
+        const confirmed = confirm('Are you sure want to delete entire album?');
+
+        if (!confirmed) return;
+    
         await fetch('/image/' + imageId, {
             method: 'DELETE',
         });

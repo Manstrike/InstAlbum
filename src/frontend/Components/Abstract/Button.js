@@ -11,4 +11,12 @@ export class Button {
 
         this._onClick(event);
     }
+
+    off() {
+        this._domElement.removeEventListener('click', this._handleButtonClick.bind(this));
+    }
+
+    on() {
+        this._domElement.addEventListener('click', this._handleButtonClick.bind(this));
+    }
 }

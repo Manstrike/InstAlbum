@@ -32,6 +32,11 @@ class CreateForm {
         const result = await response.json();
 
         if (result.error && result.error.code === 'no_images_found') {
+            this._form.style.opacity = '1';
+            this._loadSpinner.style.display = 'none';
+
+            this._createAlbumForm.toggleSubmitButton();
+
             alert('No images found!');
 
             return;

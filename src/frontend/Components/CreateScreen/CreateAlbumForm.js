@@ -36,9 +36,15 @@ export class CreateAlbumForm {
     _handleSubmitButtonClicked() {
         if (!this._albumUrl || !this._albumName) return;
 
+        this._submitButton.off();
+
         this._onSubmit({
             name: this._albumName,
             url: this._albumUrl
         });
+    }
+
+    toggleSubmitButton() {
+        this._submitButton.on();
     }
 }
