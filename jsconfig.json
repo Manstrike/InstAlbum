@@ -1,0 +1,12 @@
+{
+    "compilerOptions": {
+        "target": "es2018",
+        "checkJs": true,
+        "module": "es6",
+        "moduleResolution": "node",
+        "strictFunctionTypes": true
+    },
+    "typeAcquisition": {
+        "enable": true
+    }
+}

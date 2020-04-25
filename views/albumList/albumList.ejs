@@ -1,0 +1,14 @@
+
+    <div class="screen" id="albumList">
+        <div class="head">
+            <a href="/createForm" id="createNewAlbum" class="head__content">Create New</a>
+            <h1 class="head__content">Your Albums</h1>
+        </div>
+        <div class="grid">
+            <div class="grid__row">
+                <% for (let i = 0; i < columns.length; i++) { %>
+                    <%- include("./column", {items: columns[i]}) %>
+                <% } %>
+            </div>
+        </div>
+    </div>

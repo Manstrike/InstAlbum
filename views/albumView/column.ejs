@@ -1,0 +1,5 @@
+<div class="grid__column">
+    <% for (let i = 0; i < items.length; i++) { %>
+            <%- include("./item", {item: items[i]}) %>
+    <%  } %>
+</div>

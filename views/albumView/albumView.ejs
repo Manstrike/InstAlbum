@@ -1,0 +1,14 @@
+<div class="screen" id="albumPreview">
+   <div class="head">
+        <a href="/" id="returnButton" class="head__content">Back to All</a>
+        <h1 class="head__content"><%=albumName %></h1>
+        <a href="/createForm" class="head__content" id="createNewButton">Create New</a>
+    </div>
+    <div class="grid">
+        <div class="grid__row">
+            <% for(let i = 0; i < columns.length; i++) { %>
+                    <%- include("./column", { items: columns[i] }) %>
+            <%  } %>
+        </div>
+    </div>
+</div>
