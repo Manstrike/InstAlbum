@@ -30,6 +30,10 @@ class AlbumView {
     }
 
     async _onAlbumDelete(albumId) {
+        const confirmation = confirm('Are you sure want to delete this album?');
+
+        if (!confirmation) return;
+
         const response = await fetch('/albums/' + albumId, {
             method: 'DELETE',
         });

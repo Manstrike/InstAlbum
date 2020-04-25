@@ -21,7 +21,8 @@
     "request-image-size": "^2.1.0",
     "request-promise": "^4.2.5",
     "request-promise-native": "^1.0.8",
-    "shortid": "^2.2.15"
+    "shortid": "^2.2.15",
+    "valid-url": "^1.0.9"
   },
   "devDependencies": {
     "@babel/preset-env": "^7.9.5",

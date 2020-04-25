@@ -31,13 +31,13 @@ class CreateForm {
         
         const result = await response.json();
 
-        if (result.error && result.error.code === 'no_images_found') {
+        if (result.error) {
             this._form.style.opacity = '1';
             this._loadSpinner.style.display = 'none';
 
-            this._createAlbumForm.toggleSubmitButton();
+            alert('No images found or bad url!');
 
-            alert('No images found!');
+            this._createAlbumForm.toggleSubmitButton();
 
             return;
         }
