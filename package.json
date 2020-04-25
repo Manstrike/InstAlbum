@@ -33,6 +33,7 @@
   },
   "scripts": {
     "babel": "babel --presets env src/frontend/main.js",
+    "start": "node --experimental-modules --es-module-specifier-resolution=node ./src/backend/app.js",
     "wp:build": "webpack",
     "wp:watch": "webpack --watch",
     "run:all": "npm-run-all -p debug:watch wp:watch",
