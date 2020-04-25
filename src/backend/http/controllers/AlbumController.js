@@ -1,9 +1,10 @@
-import { Scraper } from "../../utilities/Scraper";
 import { DBConnection } from "../../database/DBConnection";
 import { AlbumGateway } from "../../database/AlbumGateway";
-import  request  from "request";
-import fs from "fs";
-import shortid from 'shortid';
+import { CreateAlbum } from "../../actions/CreateAlbum";
+import { AlbumReader } from "../../helpers/AlbumReader";
+import { AlbumCollector } from "../../helpers/AlbumCollector";
+import { AlbumEraser } from "../../helpers/AlbumEraser";
+import { ImageEraser } from "../../helpers/ImageEraser";
 
 export class AlbumController {
     constructor() {
@@ -12,235 +13,113 @@ export class AlbumController {
     }
 
     async createNewAlbum(request, response) {
- 
         if (!request.body){ 
-            response.sendStatus(400);
+            response.status(422).send({error: {code: 'request_is_empty'}});
             
             return;
         };
-        console.time('MAIN');
         
         const {name, url} = request.body;
-        const albumShortId = shortid.generate();
-        
-        console.time('scraper');
-        const imagesFound = await this._findImagesOnPage(url);
-        console.timeEnd('scraper');
+        console.log({name, url});
+        const createAlbum = new CreateAlbum(this._albumGateway, {name, url});
 
-        if (imagesFound.length === 0) return;
-
-        const pathToAlbum = await this._createAlbumDir(albumShortId);
-
-        console.time('save images');
-        const savedImagesPaths = await this._saveFoundImages(imagesFound, pathToAlbum);
-        console.timeEnd('save images');
-
-        const createdAlbumId = await this._createAlbum(name, albumShortId);
-        await this._createImagesAndBindWithAlbum(createdAlbumId, savedImagesPaths);
-
-        /*const responseData = await this._collectAlbumData(createdAlbumId);
-        
-        response.render("albumView/albumView.ejs", responseData);*/
-
-        console.timeEnd('MAIN');
-        response.json({ref: '/albums/' + createdAlbumId});
-    }
-
-    async _findImagesOnPage(url) {
-        const scraper = new Scraper({url});
-
-        return await scraper.load();
-    }
-
-    async _saveFoundImages(scrapedImages, pathToAlbum) {
-        const promises = [];
-        const imagePaths = [];
-        for (const image of scrapedImages) {
-            if (!image) continue;
-
-            const pathToImage = this._generatePathToImage(pathToAlbum, image.type);
-            imagePaths.push(pathToImage);
-            promises.push(this._downloadImage(image, pathToImage));
-        }
-        console.time('image download');
-        await Promise.all(promises);
-        console.timeEnd('image download');
-
-        return imagePaths;
-    }
-
-    async _createAlbum(name, albumShortId) {
-        return await this._albumGateway.createAlbum({name, shortId: albumShortId});
-    }
-
-    async _createImagesAndBindWithAlbum(albumId, imagesPaths) {
-        if (imagesPaths.length === 0) return;
-
-        for (const path of imagesPaths) {
-            const cuttedPath = path.split(/.\/public/).pop();
-            const insertedImageId = await this._albumGateway.createImage(cuttedPath);
-
-            await this._albumGateway.bindImageToAlbum(albumId, insertedImageId);
-        }
-    }
-
-    async _createAlbumDir(shortId) {
-        const dir = `./public/files/${shortId}`;
-
-        await fs.mkdir(dir, (err) => { if (err) console.log(err) });
-
-        return dir;
-    }
-
-    _generatePathToImage(pathToAlbum, type) {
-        const imageShortId = shortid.generate();
-
-        return pathToAlbum + '/' + imageShortId + '.' + type;
-    }
-
-    async _downloadImage(url, pathToImage) {
-        let image = fs.createWriteStream(pathToImage);
-
+        let newAlbumId;
         try {
-            await new Promise((resolve, reject) => {
-                request(url)
-                    .pipe(image)
-                    .on('finish', () => resolve())
-                    .on('error', (error) => reject(error));
-            });
-        } catch (error) {
-            console.log(error)
+            newAlbumId = await createAlbum.execute();
+        } catch(error) {
+            response.status(404).send({error: {code: error.message}});
+
+            return;
         }
+
+        response.json({ref: '/albums/' + newAlbumId});
     }
 
     async viewAlbum(request, response) {
         if (!request.params.albumId) {
-            response.sendStatus(400)
+            response.status(422).send({error: {code: 'request_is_empty'}});
             
             return;
         };
 
         const albumId = request.params.albumId;
 
-        const responseData = await this._collectAlbumData(albumId);
+        const albumReader = new AlbumReader(this._albumGateway);
+
+        let responseData;
+        try {
+            responseData = await albumReader.execute(albumId);
+        } catch (error) {
+            response.status(404).send({error: {code: error.message}});
+
+            return;
+        }
 
         response.render('./albumView/index.ejs', responseData);
     }
 
-    async _collectAlbumData(albumId) {
-        const [album] = await this._albumGateway.getAlbum(albumId);
-        const albumItems = await this._albumGateway.readAlbumImages(albumId);
-
-        const albumImages = [];
-        for (const {item_id} of albumItems) {
-            const [image] = await this._albumGateway.getImage(item_id);
-
-            albumImages.push({
-                id: image.id,
-                src: image.reference,
-            });
-        }
-
-        const size = Math.ceil(albumImages.length / 4); 
-        const arrayOfArrays = [];
-        for (let i = 0; i < albumImages.length; i += size) {
-            arrayOfArrays.push(albumImages.slice(i, i + size));
-        }
-
-        return {
-            albumName: album.name,
-            columns: [...arrayOfArrays],
-        };
-    }
-
     async deleteAlbum(request, response) {
         if (!request.params.albumId) {
-            response.sendStatus(400);
+            response.status(422).send({error: {code: 'request_is_empty'}});
         
             return;
         }
 
         const albumId = request.params.albumId;
-        const [album] = await this._albumGateway.getAlbum(albumId);
+        console.log({albumId});
+        const albumEraser = new AlbumEraser(this._albumGateway);
 
-        await this._deleteAlbumImages(albumId);
-        await this._albumGateway.deleteAlbum(albumId);
-        await this._deleteAlbumDirectory(album.shortId);
+        try {
+            await albumEraser.execute(albumId);
+        } catch (error) {
+            response.status(400).send({error: {code: error.message}});
 
-        response.sendStatus(200);
+            return;
+        }
+        console.log('done');
+        response.json({ref: '/albums'});
     }
 
     async deleteImage(request, response) {
         if (!request.params.imageId) {
-            response.sendStatus(400);
+            response.status(422).send({error: {code: 'request_is_empty'}});;
             
             return;
         };
         
         const imageId = request.params.imageId;
 
-        await this._deleteImageById(imageId);
+        const imageEraser = new ImageEraser(this._albumGateway);
+        try {
+            await imageEraser.deleteImageById(imageId);
+        } catch (error) {
+            response.status(422).send({error: {code: error.message}});
+
+            return;
+        }
 
         response.sendStatus(200);
     }
 
-    async _deleteAlbumDirectory(shortId) {
-        const pathToAlbum = './public/files/' + shortId;
-
-        await fs.rmdir(pathToAlbum, (err) =>{ if (err) console.log(err) });
-    }
-
-    async _deleteAlbumImages(albumId) {
-        const albumItems = await this._albumGateway.readAlbumImages(albumId);
-
-        for (const {item_id} of albumItems) {
-            await this._deleteImageById(item_id);
-        }
-    }
-
-    async _deleteImageById(imageId) {
-        const [image] = await this._albumGateway.getImage(imageId);
-
-        await fs.unlink(image.reference, (err) => { if (err) console.log(err) });
-        await this._albumGateway.deleteImage(imageId);
-    }
-
     async albumList(request, response) {
-        const albumList = await this._albumGateway.getAlbumList();
+        const albumCollector = new AlbumCollector(this._albumGateway);
 
-        if (albumList.length === 0) {
-            response.render('./createForm/index.ejs');
+        let columns;
+        try {
+            columns = await albumCollector.execute();
+        } catch (error) {
+            if (error.message === 'no_albums_found') {
+                response.render('./createForm/index.ejs');
+
+                return;
+            }
+
+            response.status(404).send({error: {code: error.message}});
+
             return;
-        }
+        } 
 
-        const result = [];
-        for (const album of albumList) {
-            const item = await this._createAlbumItem(album);
-
-            if (!item) continue;
-
-            result.push(item);
-        }
-
-        const size = Math.ceil(result.length / 4); 
-        const arrayOfArrays = [];
-        for (let i = 0; i < result.length; i += size) {
-            arrayOfArrays.push(result.slice(i,i+size));
-        }
-
-        response.render('./albumList/index.ejs', { columns: arrayOfArrays });
-    }
-
-    async _createAlbumItem({id, name}) {
-        const lastImageInAlbum = await this._albumGateway.getLastImageInAlbum(id);
-
-        if (!lastImageInAlbum) return;
-
-        return {
-            id,
-            name,
-            src: lastImageInAlbum.reference,
-        };
+        response.render('./albumList/index.ejs', { columns });
     }
 
     async getCreateAlbumForm(request, response) {

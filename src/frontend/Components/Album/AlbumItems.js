@@ -22,8 +22,4 @@ export class AlbumItems {
 
         this._onDelete(item);
     }
-
-    _itemsLeft() {
-        return this._domElements.length;
-    }
 }   

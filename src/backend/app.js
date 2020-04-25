@@ -16,10 +16,6 @@ app.set('view engine', 'ejs');
 
 const albumController = new AlbumController();
 
-/*app.get('/', function (req, res) {
-    res.render('index');
-});*/
-
 app.route('/')
     .get(albumController.albumList.bind(albumController));
 

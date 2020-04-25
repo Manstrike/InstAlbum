@@ -1,38 +1,22 @@
-import request from 'request-promise-native';
 import cheerio from 'cheerio';
 import probe from 'probe-image-size';
 import url from "url";
 import {Readable} from 'stream';
 
 export class Scraper {
-    constructor({url}) {
-        this._url = url;
-
-        this._width = 250;
-        this._height = 240;
-        this._mimeAllowed = /png|jpg|jpeg/;
+    constructor() {
         this._base64Pattern = /;base64,/;
-
         this._parsedImages = [];
+        this._$ = null;
     }
 
-    async load() {
-        const html = await this._loadPage(this._url);
-
-        const images = await this._exctractImages(html);    
-        return images.map(image => this._validateImage(image));
+    setUrl(url) {
+        this._url = url;
     }
 
-    async _loadPage(url) {
-        return await request(url);
-    }
-
-    async _exctractImages(body) {
-        console.time('cheerio loaded');
-        const $ = cheerio.load(body);
+    async execute(html) {
+        const $ = cheerio.load(html);
         const images = $('img');
-        console.timeEnd('cheerio loaded');
-
         const imgKeys = Object.keys(images);
 
         const promises = [];
@@ -43,29 +27,29 @@ export class Scraper {
 
             promises.push(this._exctractImageByUrl(src));
         }
-        console.time('image parsed');
-        const parsedImages = Promise.all(promises);
-        console.timeEnd('image parsed');
         
-
-        return parsedImages;
+        return Promise.all(promises);
     }   
+
+    async _findImages() {
+        return this._$('img');
+    }
 
     async _exctractImageByUrl(src) {
         const isSrcBase54 = this._base64Pattern.test(src);
 
-        let imageUrl = src;
+        let imageSource = src;
         if (isSrcBase54) {
-            imageUrl = await this._exctractBase64(src);
+            imageSource = await this._base64ToReadable(src);
         } else {
-            imageUrl = url.resolve(this._url, src);
+            imageSource = url.resolve(this._url, src);
         }
 
-        return await probe(imageUrl).catch(err => {console.log(err)});
+        return await probe(imageSource).catch(err => {console.log(err)});
     }
 
-    async _exctractBase64(src) {
-        const base64String = src.split(this._base64Pattern).pop();
+    async _base64ToReadable(src) {
+        const base64String = this._cleanBase64String(src);
 
         const bitmap = new Buffer(base64String, 'base64');
 
@@ -76,25 +60,7 @@ export class Scraper {
         return readable;
     }
 
-    _validateImage(result) {
-        if (!result) return;
-
-        const {width, height, type, url} = result;
-
-        if (this._imageNotAllowed(type)) return;
-        if (this._imageTooSmall(width, height)) return;
-
-        return {
-            type,
-            url,
-        };
-    }
-
-    _imageNotAllowed(type) {
-        return !this._mimeAllowed.test(type);
-    }
-
-    _imageTooSmall(width, height) {
-        return (width < this._width) || (height < this._height);
+    _cleanBase64String(string) {
+        return string.split(this._base64Pattern).pop();
     }
 }

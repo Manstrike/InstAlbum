@@ -11,16 +11,27 @@ class AlbumView {
         this._albumEntity = new Album({
             domElement: document.getElementById('albumPreview'),
             onImageDelete: this._onImageDeleted.bind(this),
+            onAlbumDelete: this._onAlbumDelete.bind(this),
         });
     }
 
     async _onImageDeleted(imageId, imagesLeft) {
-        let response = await fetch('/image/' + imageId, {
+        await fetch('/image/' + imageId, {
             method: 'DELETE',
         });
 
         if (imagesLeft === 0) {
             location.pathname = '/';
         }
+    }
+
+    async _onAlbumDelete(albumId) {
+        const response = await fetch('/albums/' + albumId, {
+            method: 'DELETE',
+        });
+
+        const result = await response.json();
+        console.log({result})
+        location.pathname = result.ref;
     }
 }
