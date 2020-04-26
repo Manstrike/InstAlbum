@@ -10,9 +10,9 @@ export class ImageExctractor {
 
     async execute(html, url) {
         this._scraper.setUrl(url);
-
+        console.log({url});
         const imagesFound = await this._scraper.execute(html);
-        
+        console.log({imagesFound})
         return await this._validateImages(imagesFound);
     }
 
@@ -39,6 +39,6 @@ export class ImageExctractor {
     }
 
     _imageTooSmall(width, height) {
-        return (width < this._width) || (height < this._height);
+        return (width < this._width) && (height < this._height);
     }
 }

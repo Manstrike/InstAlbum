@@ -13,10 +13,10 @@ export class Button {
     }
 
     off() {
-        this._domElement.removeEventListener('click', this._handleButtonClick.bind(this));
+        this._domElement.removeEventListener('click', this._handleButtonClick);
     }
 
     on() {
-        this._domElement.addEventListener('click', this._handleButtonClick.bind(this));
+        this._domElement.addEventListener('click', this._handleButtonClick);
     }
 }
